@@ -5,8 +5,8 @@ import rclpy
 from rclpy.node import Node
 
 from yi2016_interfaces.srv import Float64MultiArray
-from utils.target_object import TargetObject
-from utils.multi_array import decode_array, encode_array
+from yi2016_utils.target_object import TargetObject
+from yi2016_utils.multi_array import decode_array, encode_array
 
 class TargetObjectService(Node):
 

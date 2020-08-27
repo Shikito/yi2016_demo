@@ -1,11 +1,12 @@
 import numpy as np
 
-def decode_array(request):
-    x = np.array(request.data)
-    return x.reshape(request.shape)
+def decode_array(comm_data):
+    x = np.array(comm_data.data)
+    return x.reshape(comm_data.shape)
 
-def encode_array(array, response):
-    response.shape = array.shape
+
+def encode_array(array, comm_data):
+    comm_data.shape = array.shape
     array_flatten = array.reshape(array.size)
-    response.data = array_flatten.tolist()
-    return response
+    comm_data.data = array_flatten.tolist()
+    return comm_data
