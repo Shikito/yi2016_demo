@@ -4,14 +4,13 @@ from rclpy.node import Node
 import time
 import threading
 
-from yi2016_utils.multi_thread_node import MultiThreadNode
 from yi2016_interfaces.msg import ControlState
 from yi2016_interfaces.srv import Float64MultiArray
 from yi2016_utils.yi_2016_controller import Yi2016Controller
 from yi2016_utils.multi_array import encode_array, decode_array
 
 # 目標。汎用的なコントローラにしたい
-class Yi2016ControlManager(MultiThreadNode):
+class Yi2016ControlManager(Node):
     def __init__(self):
         super().__init__("yi_2016_control_manager")
         self.isSetController = False
@@ -31,9 +30,16 @@ class Yi2016ControlManager(MultiThreadNode):
 
         # Main Loop
         update_period = 0.5
-        self.control_loop_thread = self.create_thread(update_period, self.update)
+        self.update_thread = threading.Thread(target=self.update_worker, daemon=True, args=(update_period,))
+        # self.update_thread.start()
+        # self.update_timer = self.create_timer(update_period, self.update)
 
-        # # Display Result Preference.
+        # Display Result Preference.
+
+    def update_worker(self, update_period): # ここだけは、イベント駆動じゃなくて、能動的に動くようにしたい。そのため、受動的（イベント駆動的に動く）rclpy.spinを使っていない。代わりに、Threadを使ってます。
+        while True:
+            self.update()
+            time.sleep(update_period)
 
     def update(self):
         self.get_logger().info('on update')
@@ -44,7 +50,10 @@ class Yi2016ControlManager(MultiThreadNode):
         response = self.request_service_sync(
             self.cli_target_object, encode_array(array=x_star.x, comm_data=self.req))
 
+        # Do something about response
+
         y_star = decode_array(response)
+
         self.controller.add_x_y_to_T(x_star.x, y_star)  # Loop 5)
 
 
@@ -90,6 +99,23 @@ class Yi2016ControlManager(MultiThreadNode):
         self.controller = controller
         self.isSetController = True
 
+    def request_service_sync(self, client, req):
+        future = client.call_async(req)
+
+        while not future.done():
+            self.get_logger().info('waiting for response')
+            time.sleep(0.01)
+            # rclpy.spin_once(self)
+
+        try:
+            response = future.result()
+        except Exception as e:
+            self.get_logger().info(
+                'Service call failed %r' % (e,))
+
+        return response
+
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -108,13 +134,24 @@ def main(args=None):
         initial_points=initial_points)
     control_manager.set_controller(yi_controller)
 
+    # Activate ControlManager
+    # rclpy.spin(control_manager)
+
     # Display Modules
     from IPython.display import display
     from matplotlib import pyplot as plt
 
-    control_manager.control_loop_thread.start()
+    control_manager.update_thread.start()
     rclpy.spin(control_manager)
+    # while rclpy.ok():
+    #     control_manager.update()
+    #     control_manager.controller.model.plot()
+    #     plt.show()
+    #     plt.close()
 
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
     control_manager.destroy_node()
     rclpy.shutdown()
     
