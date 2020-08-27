@@ -35,28 +35,21 @@ class Yi2016ControlManager(Node):
 
         # # Display Result Preference.
 
+    # Algorithm 1 Loop in Yi Paper
     def update(self):
         self.get_logger().info('on update')
+        
+        # 1) 2) 3) in Loop
+        x_star = self.controller.calc_next_point()      
 
-        x_star = self.controller.calc_next_point()  # Loop 1) 2) 3)
-
-        # Wait for response
-        response = self.request_service_sync(
+        # 4) in Loop # Wait for response
+        response = self.request_service_sync(           
             self.cli_target_object, encode_array(array=x_star.x, comm_data=self.req))
 
+        # 5) in Loop
         y_star = decode_array(response)
-        self.controller.add_x_y_to_T(x_star.x, y_star)  # Loop 5)
+        self.controller.add_x_y_to_T(x_star.x, y_star)  
 
-
-    # Algorithm 1 Loop in Yi Paper
-    def control_loop(self):
-        self.get_logger().info('control_loop')
-        self.get_logger().info('done calc_next_point')
-        # self.get_logger().info(str(x_star.x))
-        y_star = self.obtain_y_at_x(x_star.x)            # Loop 4)
-        self.get_logger().info('done obtain_y_at_x')
-        self.controller.add_x_y_to_T(x_star.x, y_star)  # Loop 5)
-        
 
     def pub_control_state_callback(self):
         msg = ControlState()
@@ -68,13 +61,11 @@ class Yi2016ControlManager(Node):
     def obtain_y_at_x(self, x):
         self.req = encode_array(array=x, comm_data=self.req)
         self.future = self.cli_target_object.call_async(self.req)
-        self.get_logger().info('waaai')
         while True:
             if not self.isSetController:
                 rclpy.spin_once(self)
             if self.future.done():
                 try:
-                    self.get_logger().info('try')
                     response = self.future.result()
                 except Exception as e:
                     self.get_logger().info(
@@ -83,7 +74,6 @@ class Yi2016ControlManager(Node):
                     self.get_logger().info('Success!')
                     break
         y = decode_array(response)
-        self.get_logger().info('get_y')
         return y
 
     def set_controller(self, controller):
