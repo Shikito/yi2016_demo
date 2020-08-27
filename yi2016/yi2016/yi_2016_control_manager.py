@@ -10,7 +10,6 @@ from yi2016_utils.yi_2016_controller import Yi2016Controller
 from yi2016_utils.multi_array import encode_array, decode_array
 
 # 目標。汎用的なコントローラにしたい
-
 class Yi2016ControlManager(Node):
     def __init__(self):
         super().__init__("yi_2016_control_manager")
@@ -37,16 +36,13 @@ class Yi2016ControlManager(Node):
 
         # Display Result Preference.
 
-    def update_worker(self, update_period):
+    def update_worker(self, update_period): # ここだけは、イベント駆動じゃなくて、能動的に動くようにしたい。そのため、受動的（イベント駆動的に動く）rclpy.spinを使っていない。代わりに、Threadを使ってます。
         while True:
             self.update()
             time.sleep(update_period)
 
     def update(self):
         self.get_logger().info('on update')
-
-        # update
-        # rclpy.spin_once(self) # spin_onceの使いどころの良い例。そのノードが自分で動きたいときはこうするしかない。＃このノードに対して何か来ることはない。ここが発火して、他のノードがサブスクライブやらなんやらってとき。
 
         x_star = self.controller.calc_next_point()  # Loop 1) 2) 3)
 
