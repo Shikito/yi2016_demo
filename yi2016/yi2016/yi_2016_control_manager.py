@@ -4,14 +4,14 @@ from rclpy.node import Node
 import time
 import threading
 
-from yi2016_utils.multi_thread_node import MultiThreadNode
+from yi2016_utils.node_utils import create_thread
 from yi2016_interfaces.msg import ControlState
 from yi2016_interfaces.srv import Float64MultiArray
 from yi2016_utils.yi_2016_controller import Yi2016Controller
 from yi2016_utils.multi_array import encode_array, decode_array
 
 # 目標。汎用的なコントローラにしたい
-class Yi2016ControlManager(MultiThreadNode):
+class Yi2016ControlManager(Node):
     def __init__(self):
         super().__init__("yi_2016_control_manager")
         self.isSetController = False
@@ -31,7 +31,7 @@ class Yi2016ControlManager(MultiThreadNode):
 
         # Main Loop
         update_period = 0.5
-        self.control_loop_thread = self.create_thread(update_period, self.update)
+        self.control_loop_thread = create_thread(update_period, self.update)
 
         # # Display Result Preference.
 
@@ -90,13 +90,29 @@ class Yi2016ControlManager(MultiThreadNode):
         self.controller = controller
         self.isSetController = True
 
+    def request_service_sync(self, client, req):
+        future = client.call_async(req)
+
+        while not future.done():
+            self.get_logger().info('waiting for response')
+            time.sleep(0.01)
+
+        try:
+            response = future.result()
+        except Exception as e:
+            self.get_logger().info(
+                'Service call failed %r' % (e,))
+
+        return response
+
+
 def main(args=None):
     rclpy.init(args=args)
 
     control_manager = Yi2016ControlManager()
 
     # Create Initial Training Data
-    init_X = np.random.uniform(-2., 2., (30, 1))
+    init_X = np.random.uniform(-2., 2., (50, 1))
     init_Y = control_manager.obtain_y_at_x(init_X)
     initial_points = np.concatenate([init_X, init_Y], axis=1)
     
