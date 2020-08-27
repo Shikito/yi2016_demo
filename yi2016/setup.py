@@ -5,8 +5,8 @@ package_name = 'yi2016'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name, 'utils'],
-    package_dir={'utils' : package_name+'/utils'},
+    packages=[package_name, package_name + '_utils'],
+    package_dir={package_name + '_utils' : package_name+'/'+package_name+'_utils'},
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
