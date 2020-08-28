@@ -1,0 +1,6 @@
+Float64MultiArray x_sampling_points
+Float64MultiArray mean
+Float64MultiArray var
+Float64MultiArray train_x
+Float64MultiArray train_y
+int64 iter_num

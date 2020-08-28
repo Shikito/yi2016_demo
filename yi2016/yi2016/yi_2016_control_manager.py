@@ -4,9 +4,10 @@ from rclpy.node import Node
 import time
 import threading
 
-from yi2016_utils.node_utils import create_thread
 from yi2016_interfaces.msg import ControlState
+from yi2016_interfaces.msg import GP
 from yi2016_interfaces.srv import Float64MultiArray
+from yi2016_utils.node_utils import create_thread
 from yi2016_utils.yi_2016_controller import Yi2016Controller
 from yi2016_utils.multi_array import encode_array, decode_array
 
@@ -23,17 +24,21 @@ class Yi2016ControlManager(Node):
             self.get_logger().info("service not available, waiting again...")
         self.req = Float64MultiArray.Request()
 
-        # Control State Publisher
+        # Publish Control Result
         self.pub_control_state = self.create_publisher(ControlState, 'control_state', 10)
         timer_period = 0.5  # seconds
-        self.timer = self.create_timer(timer_period, self.pub_control_state_callback)
+        self.pub_control_state_timer = self.create_timer(timer_period, self.pub_control_state_callback)
         self.iter_num = 0
 
-        # Main Loop
+        # Publish GP Result
+        self.pub_gp_result = self.create_publisher(GP, 'gp_result', 10)
+        timer_period = 0.5
+        self.pub_gp_result_timer = self.create_timer(timer_period, self.pub_gp_result_callback)
+        
+        # Main Loop (by Thread)
         update_period = 0.5
         self.control_loop_thread = create_thread(update_period, self.update)
-
-        # # Display Result Preference.
+        timer_period = 0.5  # seconds
 
     # Algorithm 1 Loop in Yi Paper
     def update(self):
@@ -48,8 +53,29 @@ class Yi2016ControlManager(Node):
 
         # 5) in Loop
         y_star = decode_array(response)
-        self.controller.add_x_y_to_T(x_star.x, y_star)  
+        self.controller.add_x_y_to_T(x_star.x, y_star)
 
+        self.iter_num += 1
+
+    def pub_gp_result_callback(self):
+        if self.isSetController is None:
+            return
+        x_sampling_points = np.linspace(
+            self.controller.bounds[0][0],
+            self.controller.bounds[0][1],
+            500)  # Number of sampling points
+        x_sampling_points = x_sampling_points[:, None] # Reshape For GPy input shape
+        msg = GP()
+        mean, var = self.controller.model.predict(x_sampling_points)
+        train_x = self.controller.X
+        train_y = self.controller.Y
+        msg.x_sampling_points = encode_array(x_sampling_points, msg.x_sampling_points)
+        msg.mean     = encode_array(mean, msg.mean)
+        msg.var      = encode_array(var, msg.var)
+        msg.train_x  = encode_array(train_x, msg.train_x)
+        msg.train_y  = encode_array(train_y, msg.train_y)
+        msg.iter_num = self.iter_num 
+        self.pub_gp_result.publish(msg)
 
     def pub_control_state_callback(self):
         msg = ControlState()
@@ -102,7 +128,7 @@ def main(args=None):
     control_manager = Yi2016ControlManager()
 
     # Create Initial Training Data
-    init_X = np.random.uniform(-2., 2., (50, 1))
+    init_X = np.random.uniform(-2., 2., (2, 1))
     init_Y = control_manager.obtain_y_at_x(init_X)
     initial_points = np.concatenate([init_X, init_Y], axis=1)
     
@@ -110,7 +136,7 @@ def main(args=None):
     yi_controller = Yi2016Controller(
         input_dim=init_X.shape[-1],
         output_dim=init_Y.shape[-1],
-        bounds=[(-2, 2)],
+        bounds=[(-3, 3)],
         initial_points=initial_points)
     control_manager.set_controller(yi_controller)
 

@@ -7,11 +7,16 @@ class TargetObject:
         if surface_shape is not None:
             self.surface_shape = surface_shape
         else:
-            self.surface_shape = np.vectorize(
-                self._yi2016_toy_func,
-                otypes=[float]
-            )
+            # self.surface_shape = np.vectorize(
+            #     self._yi2016_toy_func,
+            #     otypes=[float]
+            # )
+            self.surface_shape = self.gpy_tutorial_func
     
+    def gpy_tutorial_func(self, x):
+        x = np.array(x)
+        return np.sin(x) + np.random.randn(*(x.shape)) * 0.2
+
     def _yi2016_toy_func(self, x):
         if x < -2 or x > 2:
             raise ValueError("x must be -2 <= x <= 2")

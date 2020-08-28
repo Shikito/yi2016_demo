@@ -22,7 +22,8 @@ setup(
     entry_points={
         'console_scripts': [
             'target_object = yi2016.target_object_service:main',
-            'control_manager = yi2016.yi_2016_control_manager:main'
+            'control_manager = yi2016.yi_2016_control_manager:main',
+            'display_manager = yi2016.display_manager:main'
         ],
     },
 )

@@ -24,6 +24,18 @@ class Yi2016Controller:
         self.model = None
         self.acquisition_function = None
 
+    @property
+    def X(self):
+        return self._T[:, : self.input_dim]
+        
+    @property
+    def Y(self):
+        return self._T[:, self.input_dim :]
+        
+    @property
+    def T(self):
+        return self._T
+
     # Algorithm 1 Loop 1) - 3) in Yi Paper
     def calc_next_point(self):
         self._update_surface_model()                      # 1)
