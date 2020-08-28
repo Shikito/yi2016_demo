@@ -84,7 +84,9 @@ class DisplayManager(Node):
         enc = np.frombuffer(buf.getvalue(), dtype=np.uint8)  # bufferからの読み出し
         dst = cv2.imdecode(enc, 1)  # デコード
         # dst = dst[:, :, ::-1]  # BGR->RGB
+        buf.close()
         plt.close()
+        
 
         # Publish Image
         bridge = CvBridge()
